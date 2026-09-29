@@ -3,13 +3,17 @@
 <plist version="1.0">
 <dict>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Para elegir la foto a editar.</string>
+	<string>Corte necesita acceso a tus fotos para elegir la imagen que quieres editar.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Para guardar las imágenes recortadas.</string>
+	<string>Corte necesita permiso para guardar en tu galería las imágenes recortadas.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<string>es</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>es</string>
+	</array>
 	<key>CFBundleDisplayName</key>
 	<string>Corte</string>
 	<key>CFBundleExecutable</key>

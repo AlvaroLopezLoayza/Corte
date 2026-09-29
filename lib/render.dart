@@ -10,11 +10,11 @@ const formats = [
   ('IG cuadrado', 1080, 1080),
   ('IG vertical', 1080, 1350),
   ('IG horizontal', 1080, 566),
-  ('Story / Reels / TikTok', 1080, 1920),
+  ('Historias / Reels / TikTok', 1080, 1920),
   ('Facebook', 1200, 630),
   ('X', 1600, 900),
   ('LinkedIn', 1200, 627),
-  ('YouTube miniatura', 1280, 720),
+  ('Miniatura de YouTube', 1280, 720),
 ];
 
 /// Blur del fondo relativo a la altura del lienzo, igual en preview y export.

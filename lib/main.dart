@@ -2,6 +2,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:gal/gal.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -11,12 +12,25 @@ import 'render.dart';
 void main() => runApp(MaterialApp(
       title: 'Corte',
       debugShowCheckedModeBanner: false,
+      // Español neutro: textos del sistema de Flutter y voz del lector de pantalla en español.
+      locale: const Locale('es'),
+      supportedLocales: const [Locale('es')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       theme: bohoTheme(Brightness.light),
       darkTheme: bohoTheme(Brightness.dark),
       home: const Editor(),
     ));
 
-const swatches = [cream, Colors.white, sand, rose, terracotta, mustard, sage, espresso];
+const swatches = [
+  (cream, 'Crema'),
+  (Colors.white, 'Blanco'),
+  (sand, 'Arena'),
+  (rose, 'Rosa viejo'),
+  (terracotta, 'Terracota'),
+  (mustard, 'Mostaza'),
+  (sage, 'Salvia'),
+  (espresso, 'Café'),
+];
 
 class Editor extends StatefulWidget {
   const Editor({super.key});
@@ -82,7 +96,9 @@ class _EditorState extends State<Editor> with SingleTickerProviderStateMixin {
         _frame = null; // fuerza encuadre inicial
       });
     } catch (e) {
-      msg.showSnackBar(SnackBar(content: Text('No se pudo abrir la foto: $e')));
+      debugPrint('pick: $e');
+      msg.showSnackBar(const SnackBar(
+          content: Text('No se pudo abrir la foto. Si solo está en la nube, descárgala primero.')));
     }
   }
 
@@ -96,7 +112,10 @@ class _EditorState extends State<Editor> with SingleTickerProviderStateMixin {
     setState(() => _saving = true);
     final msg = ScaffoldMessenger.of(context);
     try {
-      if (!await Gal.hasAccess() && !await Gal.requestAccess()) throw 'Sin permiso para la galería';
+      if (!await Gal.hasAccess() && !await Gal.requestAccess()) {
+        msg.showSnackBar(const SnackBar(content: Text('Permite el acceso a la galería para guardar.')));
+        return;
+      }
       final (_, w, h) = formats[_fmt];
       // Se vuelve a decodificar el original: el export nunca usa la copia de pantalla.
       final (full, _) = await decodeFull(_bytes!);
@@ -124,7 +143,8 @@ class _EditorState extends State<Editor> with SingleTickerProviderStateMixin {
         full.dispose();
       }
     } catch (e) {
-      msg.showSnackBar(SnackBar(content: Text('Error al guardar: $e')));
+      debugPrint('save: $e');
+      msg.showSnackBar(const SnackBar(content: Text('No se pudo guardar. Inténtalo de nuevo.')));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -194,7 +214,7 @@ class _EditorState extends State<Editor> with SingleTickerProviderStateMixin {
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             const RepaintBoundary(child: CustomPaint(size: Size(220, 110), painter: Rainbow())),
             const SizedBox(height: 28),
-            Text('Cortá, ampliá\ny armá carruseles',
+            Text('Corta, amplía\ny arma carruseles',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontFamily: serif, fontSize: 34, height: 1.1, color: t.colorScheme.onSurface)),
             const SizedBox(height: 12),
@@ -447,7 +467,7 @@ class _EditorState extends State<Editor> with SingleTickerProviderStateMixin {
           SegmentedButton<bool>(
             showSelectedIcon: false,
             segments: const [
-              ButtonSegment(value: true, label: Text('Blur'), icon: Icon(Icons.blur_on)),
+              ButtonSegment(value: true, label: Text('Difuso'), icon: Icon(Icons.blur_on)),
               ButtonSegment(value: false, label: Text('Color'), icon: Icon(Icons.palette_outlined)),
             ],
             selected: {_blur},
@@ -466,7 +486,7 @@ class _EditorState extends State<Editor> with SingleTickerProviderStateMixin {
                   padding: const EdgeInsets.only(top: 12),
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
-                    child: Row(children: [for (final c in swatches) _swatch(c)]),
+                    child: Row(children: [for (final (c, name) in swatches) _swatch(c, name)]),
                   ),
                 ),
         ),
@@ -488,7 +508,7 @@ class _EditorState extends State<Editor> with SingleTickerProviderStateMixin {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              _jpeg ? 'Alta calidad (95), mucho más liviano' : 'Sin pérdida, pesa más',
+              _jpeg ? 'Alta calidad (95), mucho más ligero' : 'Sin pérdida, pesa más',
               style: TextStyle(fontSize: 12, height: 1.25, color: t.colorScheme.onSurfaceVariant),
             ),
           ),
@@ -502,9 +522,13 @@ class _EditorState extends State<Editor> with SingleTickerProviderStateMixin {
         child: Text(text, style: TextStyle(fontFamily: serif, fontSize: 20, color: Theme.of(context).colorScheme.onSurface)),
       );
 
-  Widget _swatch(Color c) {
+  Widget _swatch(Color c, String name) {
     final sel = _color == c;
-    return GestureDetector(
+    return Semantics(
+      label: 'Fondo $name',
+      button: true,
+      selected: sel,
+      child: GestureDetector(
       onTap: () {
         HapticFeedback.selectionClick();
         setState(() => _color = c);
@@ -520,6 +544,7 @@ class _EditorState extends State<Editor> with SingleTickerProviderStateMixin {
           shape: BoxShape.circle,
           border: Border.all(color: sel ? clay : Theme.of(context).colorScheme.outline, width: sel ? 3 : 1),
         ),
+      ),
       ),
     );
   }

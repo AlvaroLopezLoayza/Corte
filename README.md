@@ -2,7 +2,7 @@
 
 <h1 align="center">Corte</h1>
 
-<p align="center">Recortá, ampliá y armá carruseles para redes sociales, sin perder resolución y sin conexión.</p>
+<p align="center">Recorta, amplía y arma carruseles para redes sociales, sin perder resolución y sin conexión.</p>
 
 <p align="center">
   <img src="docs/inicio.png" width="240" alt="Pantalla de inicio">
@@ -12,11 +12,11 @@
 
 ## Qué hace
 
-- **Recorta** una foto a los tamaños de cada red: Instagram (cuadrado, vertical, horizontal), Stories/Reels/TikTok, Facebook, X, LinkedIn y miniatura de YouTube.
+- **Recorta** una foto a los tamaños de cada red: Instagram (cuadrado, vertical, horizontal), Historias/Reels/TikTok, Facebook, X, LinkedIn y miniatura de YouTube.
 - **Arma carruseles** partiendo una foto grande en 2 a 10 slides contiguos.
 - **Amplía sin deformar**: si la foto no entra en el formato, la ajusta entera y rellena con fondo desenfocado o un color.
-- **Editor WYSIWYG**: pellizcar y arrastrar; lo que se ve es exactamente lo que se guarda.
-- **Guarda en la galería** como PNG (sin pérdida) o JPEG de alta calidad (calidad 95, mucho más liviano).
+- **Editor WYSIWYG**: pellizca y arrastra; lo que se ve es exactamente lo que se guarda.
+- **Guarda en la galería** como PNG (sin pérdida) o JPEG de alta calidad (calidad 95, mucho más ligero).
 
 ## Garantías
 
