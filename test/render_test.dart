@@ -77,4 +77,51 @@ void main() {
       }
     });
   });
+
+  testWidgets('rotar 90/180/270 = píxeles originales exactos (sin re-muestreo)', (tester) async {
+    await tester.runAsync(() async {
+      const frame = Size(100, 50); // la foto girada (40×20) llena justo 2 slides de 20×20
+      // (giros, ancho y alto de la foto sin girar, píxel de origen para el píxel girado (x, y))
+      final cases = <(int, int, int, (int, int) Function(int, int))>[
+        (1, 20, 40, (x, y) => (y, 40 - 1 - x)),
+        (2, 40, 20, (x, y) => (40 - 1 - x, 20 - 1 - y)),
+        (3, 20, 40, (x, y) => (20 - 1 - y, x)),
+      ];
+      for (final (turns, ow, oh, from) in cases) {
+        final (img, src) = await patterned(ow, oh);
+        final pngs = await renderSlides(
+          img: img,
+          blurSrc: img,
+          m: fitMatrix(const Size(40, 20), frame, cover: true),
+          frame: frame,
+          fmtW: 10,
+          fmtH: 10,
+          count: 2,
+          turns: turns,
+        );
+        for (var i = 0; i < 2; i++) {
+          final (w, h, px) = await decodePng(pngs[i]);
+          expect((w, h), (20, 20));
+          for (var y = 0; y < h; y++) {
+            for (var x = 0; x < w; x++) {
+              final (sx, sy) = from(x + i * 20, y);
+              final o = (y * w + x) * 4, so = (sy * ow + sx) * 4;
+              expect(px.sublist(o, o + 4), src.sublist(so, so + 4), reason: 'giro $turns slide $i px ($x,$y)');
+            }
+          }
+        }
+      }
+      // La copia de pantalla girada también es exacta.
+      final (img, src) = await patterned(3, 2);
+      final rot = await rotate90(img);
+      expect((rot.width, rot.height), (2, 3));
+      final px = (await rot.toByteData(format: ui.ImageByteFormat.rawRgba))!.buffer.asUint8List();
+      for (var y = 0; y < 3; y++) {
+        for (var x = 0; x < 2; x++) {
+          final o = (y * 2 + x) * 4, so = ((2 - 1 - x) * 3 + y) * 4;
+          expect(px.sublist(o, o + 4), src.sublist(so, so + 4));
+        }
+      }
+    });
+  });
 }

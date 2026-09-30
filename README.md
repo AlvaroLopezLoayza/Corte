@@ -13,6 +13,8 @@
 ## Qué hace
 
 - **Recorta** una foto a los tamaños de cada red: Instagram (cuadrado, vertical, horizontal), Historias/Reels/TikTok, Facebook, X, LinkedIn y miniatura de YouTube.
+- **Tamaño personalizado**: cualquier ancho × alto (de 16 a 20000 px), además de los formatos de redes.
+- **Rota** la foto en pasos de 90°, sin pérdida.
 - **Arma carruseles** partiendo una foto grande en 2 a 10 slides contiguos.
 - **Amplía sin deformar**: si la foto no entra en el formato, la ajusta entera y rellena con fondo desenfocado o un color.
 - **Editor WYSIWYG**: pellizca y arrastra; lo que se ve es exactamente lo que se guarda.
@@ -21,7 +23,7 @@
 ## Garantías
 
 - **Resolución original.** El recorte se exporta a resolución nativa (1 píxel de la foto = 1 píxel de salida) y nunca se reduce. Solo se amplía si el recorte queda por debajo del mínimo de la red. Debajo del marco se muestra en vivo el tamaño exacto que se va a guardar.
-- **Píxeles idénticos.** En PNG, cada píxel exportado es idéntico al original; lo verifican los tests, también en la GPU de un dispositivo real.
+- **Píxeles idénticos.** En PNG, cada píxel exportado es idéntico al original, también con la foto rotada; lo verifican los tests, incluso en la GPU de un dispositivo real.
 - **100 % offline.** La versión release no pide permiso de internet. Las fuentes van incluidas y el guardado es local.
 - **Accesible.** Todas las combinaciones de color cumplen WCAG AA, en modo claro y oscuro.
 
@@ -42,7 +44,7 @@ flutter build apk --release  # APK en build/app/outputs/flutter-apk/
 
 ```bash
 flutter test                                 # lógica de encuadre y exactitud de píxeles
-flutter test integration_test -d <device-id> # en el dispositivo: 12 MP, 50 MP y JPEG en la GPU real
+flutter test integration_test -d <device-id> # en el dispositivo: 12 MP, 50 MP, rotación y JPEG en la GPU real
 ```
 
 ## Estructura

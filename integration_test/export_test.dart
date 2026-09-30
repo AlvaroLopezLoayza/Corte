@@ -142,6 +142,30 @@ void main() {
     });
   });
 
+  testWidgets('12 MP girada 90° → IG vertical, píxeles exactos', (tester) async {
+    await tester.runAsync(() async {
+      const iw = 4000, ih = 3000; // girada: 3000 × 4000
+      final src = pattern(iw, ih);
+      final full = await fromPixels(src, iw, ih);
+      const frame = Size(300, 375);
+      final m = fitMatrix(const Size(3000, 4000), frame, cover: true);
+      final png = (await renderSlides(img: full, blurSrc: full, m: m, frame: frame, fmtW: 1080, fmtH: 1350, count: 1, turns: 1)).single;
+      final (img, _) = await decodeFull(png);
+      expect((img.width, img.height), (3000, 3750));
+      final o32 = (await img.toByteData(format: ui.ImageByteFormat.rawRgba))!.buffer.asUint32List();
+      final s32 = src.buffer.asUint32List();
+      const offY = 125; // (4000 - 3750) / 2
+      var bad = 0;
+      for (var y = 0; y < 3750; y++) {
+        for (var x = 0; x < 3000; x++) {
+          // píxel girado (x, y + offY) viene del original (y + offY, ih - 1 - x)
+          if (o32[y * 3000 + x] != s32[(ih - 1 - x) * iw + y + offY]) bad++;
+        }
+      }
+      expect(bad, 0, reason: '$bad píxeles distintos al original');
+    });
+  });
+
   testWidgets('zoom fuerte → se amplía al mínimo de la red (nunca menos)', (tester) async {
     await tester.runAsync(() async {
       final full = await fromPixels(pattern(1200, 900), 1200, 900);

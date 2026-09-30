@@ -82,6 +82,20 @@ ThemeData bohoTheme(Brightness b) {
       contentTextStyle: TextStyle(fontFamily: 'Poppins', color: dark ? espresso : cream, fontWeight: FontWeight.w500),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
     ),
+    dialogTheme: DialogThemeData(backgroundColor: scheme.surfaceContainer, surfaceTintColor: Colors.transparent),
+    // La arcilla no contrasta como texto/foco sobre fondos oscuros (2.4:1): texto en onSurface
+    // y foco en secondary (musgo/salvia, ≥ 4.5:1 en ambos modos).
+    textButtonTheme: TextButtonThemeData(style: TextButton.styleFrom(foregroundColor: scheme.onSurface)),
+    inputDecorationTheme: InputDecorationTheme(
+      floatingLabelStyle: TextStyle(color: scheme.onSurface),
+      focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: scheme.secondary, width: 2)),
+      enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: scheme.outline)),
+    ),
+    textSelectionTheme: TextSelectionThemeData(
+      cursorColor: scheme.secondary,
+      selectionHandleColor: scheme.secondary,
+      selectionColor: scheme.secondary.withValues(alpha: .35),
+    ),
   );
 }
 

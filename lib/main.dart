@@ -42,7 +42,10 @@ class _EditorState extends State<Editor> with SingleTickerProviderStateMixin {
   Uint8List? _bytes; // archivo original, intacto
   ui.Image? _img; // copia liviana solo para pantalla
   Size _full = Size.zero; // resolución original en px
-  int _fmt = 1;
+  int _turns = 0; // giros de 90° aplicados a la foto (sin pérdida)
+  bool _rotating = false;
+  int _fmt = 1; // índice en `formats`; formats.length = tamaño personalizado
+  (int, int) _custom = (1080, 1080);
   bool _carousel = false;
   int _slides = 3;
   bool _blur = true;
@@ -55,6 +58,8 @@ class _EditorState extends State<Editor> with SingleTickerProviderStateMixin {
   Matrix4Tween? _tween;
 
   int get _count => _carousel ? _slides : 1;
+  bool get _isCustom => _fmt == formats.length;
+  (int, int) get _size => _isCustom ? _custom : (formats[_fmt].$2, formats[_fmt].$3);
 
   @override
   void initState() {
@@ -93,12 +98,41 @@ class _EditorState extends State<Editor> with SingleTickerProviderStateMixin {
         _img = preview;
         _bytes = bytes;
         _full = size;
+        _turns = 0;
         _frame = null; // fuerza encuadre inicial
       });
     } catch (e) {
       debugPrint('pick: $e');
       msg.showSnackBar(const SnackBar(
           content: Text('No se pudo abrir la foto. Si solo está en la nube, descárgala primero.')));
+    }
+  }
+
+  // Gira 90° la copia de pantalla; el original se gira recién al exportar (con la misma matriz exacta).
+  Future<void> _rotate() async {
+    if (_rotating) return;
+    _rotating = true;
+    HapticFeedback.selectionClick();
+    final rotated = await rotate90(_img!);
+    if (!mounted) return rotated.dispose();
+    setState(() {
+      _img!.dispose();
+      _img = rotated;
+      _turns = (_turns + 1) % 4;
+      _full = Size(_full.height, _full.width);
+      _frame = null; // reencuadre para la nueva orientación
+    });
+    _rotating = false;
+  }
+
+  Future<void> _editCustom() async {
+    HapticFeedback.selectionClick();
+    final size = await showDialog<(int, int)>(context: context, builder: (_) => CustomSizeDialog(_custom));
+    if (size != null) {
+      _relayout(() {
+        _custom = size;
+        _fmt = formats.length;
+      });
     }
   }
 
@@ -116,7 +150,7 @@ class _EditorState extends State<Editor> with SingleTickerProviderStateMixin {
         msg.showSnackBar(const SnackBar(content: Text('Permite el acceso a la galería para guardar.')));
         return;
       }
-      final (_, w, h) = formats[_fmt];
+      final (w, h) = _size;
       // Se vuelve a decodificar el original: el export nunca usa la copia de pantalla.
       final (full, _) = await decodeFull(_bytes!);
       try {
@@ -128,6 +162,7 @@ class _EditorState extends State<Editor> with SingleTickerProviderStateMixin {
           fmtW: w,
           fmtH: h,
           count: _count,
+          turns: _turns,
           bg: _blur ? null : _color,
           jpeg: _jpeg,
         );
@@ -248,6 +283,15 @@ class _EditorState extends State<Editor> with SingleTickerProviderStateMixin {
                 onSelected: (_) => _relayout(() => _fmt = i),
               ),
             ),
+          ChoiceChip(
+            avatar: _isCustom
+                ? _ratioIcon(_custom.$1, _custom.$2, true)
+                : const Icon(Icons.tune_rounded, size: 18, color: terracotta),
+            label: Text(_isCustom ? '${_custom.$1} × ${_custom.$2}' : 'Personalizado'),
+            tooltip: 'Tamaño personalizado',
+            selected: _isCustom,
+            onSelected: (_) => _editCustom(), // siempre abre el diálogo, también para editarlo
+          ),
         ]),
       );
 
@@ -306,7 +350,7 @@ class _EditorState extends State<Editor> with SingleTickerProviderStateMixin {
   }
 
   Widget _canvas(ui.Image img) {
-    final (_, w, h) = formats[_fmt];
+    final (w, h) = _size;
     final ratio = w * _count / h;
     // El marco se calcula acá (no con un LayoutBuilder interno) para que el controller nuevo
     // exista antes de construir todo lo que lo escucha (marco + etiqueta de resolución).
@@ -404,7 +448,7 @@ class _EditorState extends State<Editor> with SingleTickerProviderStateMixin {
             Icon(native ? Icons.verified_outlined : Icons.open_in_full_rounded, size: 16, color: native ? scheme.secondary : scheme.tertiary),
             const SizedBox(width: 6),
             Text(
-              '$slides$w × $h px · ${native ? 'resolución original' : 'ampliada al mínimo de la red'}',
+              '$slides$w × $h px · ${native ? 'resolución original' : 'ampliada al tamaño mínimo'}',
               style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
             ),
           ]);
@@ -448,6 +492,7 @@ class _EditorState extends State<Editor> with SingleTickerProviderStateMixin {
           Expanded(
             child: FilledButton.tonalIcon(
               onPressed: () => _fit(true),
+              style: _compact,
               icon: const Icon(Icons.crop_rounded),
               label: const Text('Rellenar'),
             ),
@@ -456,9 +501,17 @@ class _EditorState extends State<Editor> with SingleTickerProviderStateMixin {
           Expanded(
             child: FilledButton.tonalIcon(
               onPressed: () => _fit(false),
+              style: _compact,
               icon: const Icon(Icons.fit_screen_rounded),
               label: const Text('Ajustar'),
             ),
+          ),
+          const SizedBox(width: 10),
+          IconButton.filledTonal(
+            tooltip: 'Rotar 90°',
+            onPressed: _rotate,
+            icon: const Icon(Icons.rotate_90_degrees_cw_outlined),
+            style: IconButton.styleFrom(minimumSize: const Size(52, 52)),
           ),
         ]),
         const SizedBox(height: 14),
@@ -517,6 +570,9 @@ class _EditorState extends State<Editor> with SingleTickerProviderStateMixin {
     );
   }
 
+  // Menos relleno lateral para que "Rellenar" y "Ajustar" entren en una línea junto a "Rotar".
+  static final _compact = FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14));
+
   Widget _label(String text) => SizedBox(
         width: 82,
         child: Text(text, style: TextStyle(fontFamily: serif, fontSize: 20, color: Theme.of(context).colorScheme.onSurface)),
@@ -546,6 +602,80 @@ class _EditorState extends State<Editor> with SingleTickerProviderStateMixin {
         ),
       ),
       ),
+    );
+  }
+}
+
+/// Ancho × alto a medida. Igual que los formatos de redes: define la proporción y el tamaño
+/// mínimo; si la foto tiene más resolución, se exporta a resolución original.
+class CustomSizeDialog extends StatefulWidget {
+  const CustomSizeDialog(this.initial, {super.key});
+  final (int, int) initial;
+  @override
+  State<CustomSizeDialog> createState() => _CustomSizeDialogState();
+}
+
+class _CustomSizeDialogState extends State<CustomSizeDialog> {
+  late final _w = TextEditingController(text: '${widget.initial.$1}');
+  late final _h = TextEditingController(text: '${widget.initial.$2}');
+
+  @override
+  void dispose() {
+    _w.dispose();
+    _h.dispose();
+    super.dispose();
+  }
+
+  String? get _error {
+    final w = int.tryParse(_w.text), h = int.tryParse(_h.text);
+    if (w == null || h == null || w < 16 || h < 16 || w > 20000 || h > 20000) return 'Usa valores entre 16 y 20000 px.';
+    if (w / h > 20 || h / w > 20) return 'La proporción no puede superar 20:1.';
+    return null;
+  }
+
+  Widget _field(TextEditingController c, String label) => Expanded(
+        child: TextField(
+          controller: c,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(5)],
+          decoration: InputDecoration(labelText: label, suffixText: 'px', border: const OutlineInputBorder()),
+          onChanged: (_) => setState(() {}),
+        ),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final error = _error;
+    final scheme = Theme.of(context).colorScheme;
+    return AlertDialog(
+      title: const Text('Tamaño personalizado', style: TextStyle(fontFamily: serif, fontSize: 24)),
+      content: Column(mainAxisSize: MainAxisSize.min, children: [
+        Row(children: [
+          _field(_w, 'Ancho'),
+          IconButton(
+            tooltip: 'Intercambiar ancho y alto',
+            icon: const Icon(Icons.swap_horiz_rounded),
+            onPressed: () => setState(() {
+              final w = _w.text;
+              _w.text = _h.text;
+              _h.text = w;
+            }),
+          ),
+          _field(_h, 'Alto'),
+        ]),
+        const SizedBox(height: 12),
+        Text(
+          error ?? 'Es el tamaño mínimo: si la foto tiene más resolución, se guarda a resolución original con esta proporción.',
+          style: TextStyle(fontSize: 12, height: 1.3, color: error != null ? scheme.error : scheme.onSurfaceVariant),
+        ),
+      ]),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        FilledButton(
+          onPressed: error == null ? () => Navigator.pop(context, (int.parse(_w.text), int.parse(_h.text))) : null,
+          child: const Text('Usar'),
+        ),
+      ],
     );
   }
 }

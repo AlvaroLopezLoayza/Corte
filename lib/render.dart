@@ -60,6 +60,30 @@ Future<ui.Image> downscale(ui.Image img, int maxSide) async {
   return out;
 }
 
+/// Matriz exacta (solo 0, 1 y -1) que gira `turns` × 90° en sentido horario una imagen de
+/// tamaño `src` y la deja en el origen. Exacta => la rotación no re-muestrea: píxeles idénticos.
+Matrix4 quarterTurn(int turns, Size src) {
+  final (w, h) = (src.width, src.height);
+  return switch (turns % 4) {
+    1 => Matrix4(0, 1, 0, 0, -1, 0, 0, 0, 0, 0, 1, 0, h, 0, 0, 1), // (x, y) -> (h - y, x)
+    2 => Matrix4(-1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1, 0, w, h, 0, 1), // (x, y) -> (w - x, h - y)
+    3 => Matrix4(0, -1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, w, 0, 1), // (x, y) -> (y, w - x)
+    _ => Matrix4.identity(),
+  };
+}
+
+/// Gira la imagen 90° en sentido horario, sin pérdida (se usa para la copia de pantalla).
+Future<ui.Image> rotate90(ui.Image img) async {
+  final rec = ui.PictureRecorder();
+  Canvas(rec)
+    ..transform(quarterTurn(1, Size(img.width.toDouble(), img.height.toDouble())).storage)
+    ..drawImage(img, Offset.zero, Paint()..filterQuality = FilterQuality.none);
+  final pic = rec.endRecording();
+  final out = await pic.toImage(img.height, img.width);
+  pic.dispose();
+  return out;
+}
+
 const _jpegChannel = MethodChannel('corte/jpeg');
 
 /// JPEG con el codificador del sistema (Android Bitmap / iOS ImageIO): offline, sin dependencias.
@@ -81,7 +105,8 @@ Future<Uint8List> encodeJpeg(ui.Image img, {int quality = 95}) async {
 }
 
 /// Renderiza los slides reproduciendo la matriz `m` del preview de tamaño `frame`.
-/// `img` = foto original a resolución completa; `blurSrc` = copia liviana para el fondo.
+/// `img` = foto original a resolución completa, sin girar; `turns` = giros de 90° a aplicarle
+/// (`m` está en coordenadas de la foto ya girada). `blurSrc` = copia liviana, ya girada, para el fondo.
 /// `bg == null` => fondo de la foto desenfocada. PNG = sin pérdida; `jpeg` = calidad 95, más liviano.
 Future<List<Uint8List>> renderSlides({
   required ui.Image img,
@@ -91,9 +116,11 @@ Future<List<Uint8List>> renderSlides({
   required int fmtW,
   required int fmtH,
   required int count,
+  int turns = 0,
   Color? bg,
   bool jpeg = false,
 }) async {
+  final rotation = quarterTurn(turns, Size(img.width.toDouble(), img.height.toDouble()));
   final (:w, :h, :native) = slideSize(m, frame, fmtW, fmtH, count);
   final total = Rect.fromLTWH(0, 0, (w * count).toDouble(), h.toDouble());
   final k = total.width / frame.width;
@@ -124,6 +151,7 @@ Future<List<Uint8List>> renderSlides({
     c
       ..translate(dx, dy)
       ..scale(scale)
+      ..transform(rotation.storage)
       ..drawImage(img, Offset.zero, Paint()..filterQuality = native ? FilterQuality.none : FilterQuality.high);
     final pic = rec.endRecording();
     final image = await pic.toImage(w, h);
